@@ -1,0 +1,36 @@
+{
+  "name": "vrmcanvas",
+  "version": "0.0.1",
+  "license": "MIT",
+  "description": "desc",
+  "main": "lib/index.js",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "20.2.5",
+    "eslint": "^8.42.0",
+    "react-refresh": "0.10.0",
+    "bun-types": "latest"
+  },
+  "scripts": {
+    "build": "bun build index.ts --outdir lib && bun run build:declaration",
+    "build:declaration": "tsc --emitDeclarationOnly --project tsconfig.json"
+  },
+  "dependencies": {
+    "@pixiv/three-vrm": "latest",
+    "@pixiv/three-vrm-core": "latest",
+    "@pixiv/types-vrm-0.0": "latest",
+    "@react-three/drei": "^9.88.13",
+    "@types/parse-color": "latest",
+    "@types/react": "latest",
+    "@types/three": "^0.154.0",
+    "install": "latest",
+    "react": "^18.0.0",
+    "react-dom": "latest",
+    "@react-three/fiber": "latest",
+    "text2expression": "latest",
+    "three": "^0.154.0",
+    "tslib": "^2.6.2",
+    "typescript": "latest"
+  }
+}
