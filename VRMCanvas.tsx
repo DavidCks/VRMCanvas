@@ -3,16 +3,24 @@ import { Html, OrbitControls } from "@react-three/drei";
 import { Canvas, invalidate, useFrame } from "@react-three/fiber";
 import assert from "assert";
 import useWindowSize from "./hooks/useWindowSize";
-import { FC, Suspense, useEffect, useRef, useState } from "react";
+import React, { FC, Suspense, useEffect, useRef, useState } from "react";
 import { RootState } from "@react-three/fiber";
 import * as THREE from "three";
 import { GLTF, GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { emptyVRMMouthExpression, VRMMouthExpression } from "text2expression";
-import { text2expression } from "text2expression";
-import { IPATextExpressions } from "text2expression";
+import {
+  emptyVRMMouthExpression,
+  VRMMouthExpression,
+} from "text2expression/lib";
+import { text2expression } from "text2expression/lib";
+import { IPATextExpressions } from "text2expression/lib";
 import { loadMixamoAnimation } from "./utils/loadMixamoAnimation.js";
 
 export type SupportedSpeechMimingLanguage = "ipa" | "en";
+
+export type Expressions = "angry" | "happy" | "neutral" | "relaxed" | "sad";
+export type ExpressFunctionType = (
+  expressions: Map<Expressions, number>
+) => void;
 
 export type SpeakFunctionType = (
   word: string,
@@ -28,7 +36,10 @@ export interface ModelProps {
   idleAnimationPath: string;
   ipaDictPaths?: Map<string, string>;
   onAnimationLoaded?: (animate: (tf: boolean) => void) => void;
-  onModelLoaded?: (speak: SpeakFunctionType) => void;
+  onModelLoaded?: (
+    speak: SpeakFunctionType,
+    express: ExpressFunctionType
+  ) => void;
   onLoadProgress?: (progress: number) => void;
 }
 
@@ -64,6 +75,7 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
   const [animationClips, setAnimationClips] = useState<
     Map<string, THREE.AnimationClip>
   >(new Map());
+  const [emotions, setEmotions] = useState<Map<Expressions, number>>(new Map());
   // const getCurrentAnimationClip = (): THREE.AnimationClip => {
   //   return animationClips.get(currentAnimation) as THREE.AnimationClip;
   // };
@@ -82,6 +94,12 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
   ]);
   const [speechExpressionIndex, setSpeechExpressionIndex] = useState(-1);
   const [speechDuration, setSpeechDuration] = useState(0);
+
+  const express: ExpressFunctionType = (
+    expressions: Map<Expressions, number>
+  ) => {
+    setEmotions(expressions);
+  };
 
   const speak: SpeakFunctionType = (
     word: string,
@@ -190,7 +208,7 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
           props.onAnimationLoaded(animate);
         }
         if (props.onModelLoaded) {
-          props.onModelLoaded(speak);
+          props.onModelLoaded(speak, express);
         }
       }, 30);
     }
@@ -331,6 +349,13 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
       const ih = vrm.expressionManager?.getValue("ih");
       const oh = vrm.expressionManager?.getValue("oh");
       const ou = vrm.expressionManager?.getValue("ou");
+      emotions.forEach((value, expressionName) => {
+        const prevValue = vrm.expressionManager?.getValue(expressionName);
+        vrm.expressionManager?.setValue(
+          expressionName,
+          (value + prevValue) / 2
+        );
+      });
 
       if (speechExpressionIndex != -1) {
         expressSpeech(state);
@@ -378,7 +403,7 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
     Object.entries(to).forEach((exp) => {
       if (exp[0] !== "duration") {
         const expVal = vrm.expressionManager!.getValue(exp[0]);
-        const tweenedVal = (expVal! + exp[1]) / 2;
+        const tweenedVal = (expVal! + (exp[1] as number)) / 2;
         vrm.expressionManager!.setValue(exp[0], tweenedVal);
       }
     });
@@ -523,7 +548,7 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
       style={{ height: `${canvasWidthAndHeight}px` }}
     >
       <Canvas
-        style={{ mixBlendMode: "multiply" }}
+        gl={{ alpha: canvasProps?.backgroundColor ? false : true }}
         frameloop="demand"
         camera={{
           fov: 20,
@@ -537,6 +562,7 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
         <directionalLight position={[1, 1, -1]} color={new THREE.Color()} />
         <Suspense fallback={null}>
           <Model
+            ipaDictPaths={modelProps.ipaDictPaths}
             modelPath={modelProps.modelPath}
             idleAnimationPath={modelProps.idleAnimationPath}
             onAnimationLoaded={
@@ -561,10 +587,12 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
           enablePan={true}
           enableDamping={true}
         />
-        <color
-          attach="background"
-          args={canvasProps?.backgroundColor ?? [255, 255, 255]}
-        />
+        {canvasProps?.backgroundColor && (
+          <color
+            attach="background"
+            args={canvasProps?.backgroundColor ?? [255, 255, 255]}
+          />
+        )}
         {/* <gridHelper /> */}
       </Canvas>
     </div>

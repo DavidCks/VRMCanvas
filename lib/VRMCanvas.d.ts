@@ -1,5 +1,7 @@
 import { FC } from "react";
 export type SupportedSpeechMimingLanguage = "ipa" | "en";
+export type Expressions = "angry" | "happy" | "neutral" | "relaxed" | "sad";
+export type ExpressFunctionType = (expressions: Map<Expressions, number>) => void;
 export type SpeakFunctionType = (word: string, lang?: SupportedSpeechMimingLanguage) => void;
 /**
  * Model props
@@ -11,7 +13,7 @@ export interface ModelProps {
     idleAnimationPath: string;
     ipaDictPaths?: Map<string, string>;
     onAnimationLoaded?: (animate: (tf: boolean) => void) => void;
-    onModelLoaded?: (speak: SpeakFunctionType) => void;
+    onModelLoaded?: (speak: SpeakFunctionType, express: ExpressFunctionType) => void;
     onLoadProgress?: (progress: number) => void;
 }
 export interface VRMCanvasProps {

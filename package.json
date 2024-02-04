@@ -1,6 +1,6 @@
 {
   "name": "vrmcanvas",
-  "version": "0.0.1",
+  "version": "0.0.7",
   "license": "MIT",
   "description": "desc",
   "main": "lib/index.js",
@@ -8,9 +8,10 @@
   "type": "module",
   "devDependencies": {
     "@types/node": "20.2.5",
+    "bun-types": "latest",
     "eslint": "^8.42.0",
-    "react-refresh": "0.10.0",
-    "bun-types": "latest"
+    "express": "^4.18.2",
+    "react-refresh": "0.10.0"
   },
   "scripts": {
     "build": "bun build index.ts --outdir lib && bun run build:declaration",
