@@ -8,11 +8,11 @@ import { RootState } from "@react-three/fiber";
 import * as THREE from "three";
 import { GLTF, GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import {
+  text2expression,
+  IPATextExpressions,
   emptyVRMMouthExpression,
   VRMMouthExpression,
-} from "text2expression/lib";
-import { text2expression } from "text2expression/lib";
-import { IPATextExpressions } from "text2expression/lib";
+} from "../Text2Expression/lib";
 import { loadMixamoAnimation } from "./utils/loadMixamoAnimation.js";
 
 export type SupportedSpeechMimingLanguage = "ipa" | "en";
@@ -362,7 +362,6 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
       }
       if (speechSynthesis && speechSynthesis.speaking) {
         if (speechExpressionIndex == -1) {
-          console.log(`speaking ${state.clock.elapsedTime}`);
           oscilateMouth(state, aa ?? 0.01);
         }
       } else {
@@ -439,7 +438,6 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
         emptyVRMMouthExpression(110),
       ]);
 
-      console.log(`Model: Being silent for '${650}ms'`);
       return;
     }
     if (speechExpressionStartedTimestamp === 0) {
@@ -447,8 +445,8 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
       speechExpressionStartedTimestamp = state.clock.elapsedTime * 1000;
     }
     const speechExpression = speechExpressions[speechExpressionIndex];
-    TweenMouthExpression(speechExpression);
-    console.log(`Model: expressing ${JSON.stringify(speechExpression)}`);
+    speechExpression && TweenMouthExpression(speechExpression);
+
     if (
       state.clock.elapsedTime * 1000 - speechExpressionStartedTimestamp >=
       speechExpression.duration
@@ -458,7 +456,6 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
         state.clock.elapsedTime * 1000 -
         speechExpressionStartedTimestamp -
         speechExpression.duration;
-      console.log(`Model: changed expression after '${timeDiff}'ms`);
       speechExpressionStartedTimestamp = 0;
       const nextIndexValue = speechExpressionIndex + 1;
       let nextIndex =
