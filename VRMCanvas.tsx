@@ -89,11 +89,9 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
     }, 30);
   };
 
-  const [speechExpressions, setSpeechExpressions] = useState([
-    emptyVRMMouthExpression(-1),
-  ]);
-  const [speechExpressionIndex, setSpeechExpressionIndex] = useState(-1);
-  const [speechDuration, setSpeechDuration] = useState(0);
+  const speechExpressions = useRef([emptyVRMMouthExpression(-1)]);
+  const speechExpressionIndex = useRef(-1);
+  const speechDuration = useRef(0);
 
   const express: ExpressFunctionType = (
     expressions: Map<Expressions, number>
@@ -125,11 +123,11 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
   };
 
   function startSpeechExpressions(exps: IPATextExpressions) {
-    setSpeechStartedTimestamp(0);
+    speechStartedTimestamp.current = 0;
     setIsSilent(false);
-    setSpeechDuration(exps.duration);
-    setSpeechExpressions(exps.all);
-    setSpeechExpressionIndex(0);
+    speechDuration.current = exps.duration;
+    speechExpressions.current = exps.all;
+    speechExpressionIndex.current = 0;
   }
 
   let loadingStarted = useRef(false);
@@ -357,11 +355,11 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
         );
       });
 
-      if (speechExpressionIndex != -1) {
+      if (speechExpressionIndex.current != -1) {
         expressSpeech(state);
       }
       if (speechSynthesis && speechSynthesis.speaking) {
-        if (speechExpressionIndex == -1) {
+        if (speechExpressionIndex.current == -1) {
           oscilateMouth(state, aa ?? 0.01);
         }
       } else {
@@ -408,17 +406,19 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
     });
   }
 
-  let [speechStartedTimestamp, setSpeechStartedTimestamp] = useState(0);
+  let speechStartedTimestamp = useRef(0);
   const [isSilent, setIsSilent] = useState(false);
   function expressSpeech(state: RootState) {
     // set up the timing for the full speech motion
-    if (speechStartedTimestamp === 0) {
-      //if the speaking has jjust been started
-      setSpeechStartedTimestamp(state.clock.elapsedTime * 1000);
-      console.log(`Model: Started speaking at '${speechStartedTimestamp}ms'`);
+    if (speechStartedTimestamp.current === 0) {
+      //if the speaking has just been started
+      speechStartedTimestamp.current = state.clock.elapsedTime * 1000;
+      console.log(
+        `Model: Started speaking at '${speechStartedTimestamp.current}ms'`
+      );
     } else if (
-      state.clock.elapsedTime * 1000 - speechStartedTimestamp >
-      speechDuration
+      state.clock.elapsedTime * 1000 - speechStartedTimestamp.current >
+      speechDuration.current
     ) {
       if (isSilent) {
         return;
@@ -426,17 +426,17 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
       setIsSilent(true);
       console.log(`Model: Spoke for '${speechDuration}ms'`);
       //if the speaking has continued longer than predicted
-      setSpeechExpressionIndex(0);
-      setSpeechStartedTimestamp(0);
-      setSpeechDuration(650);
-      setSpeechExpressions([
+      speechExpressionIndex.current = 0;
+      speechStartedTimestamp.current = 0;
+      speechDuration.current = 650;
+      speechExpressions.current = [
         emptyVRMMouthExpression(110),
         emptyVRMMouthExpression(110),
         emptyVRMMouthExpression(110),
         emptyVRMMouthExpression(110),
         emptyVRMMouthExpression(110),
         emptyVRMMouthExpression(110),
-      ]);
+      ];
 
       return;
     }
@@ -444,7 +444,17 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
       //if the expression has just started
       speechExpressionStartedTimestamp = state.clock.elapsedTime * 1000;
     }
-    const speechExpression = speechExpressions[speechExpressionIndex];
+    const speechExpression: VRMMouthExpression =
+      speechExpressions.current.length > 0
+        ? speechExpressions.current[speechExpressionIndex.current]
+        : {
+            duration: speechDuration.current,
+            aa: 0,
+            ee: 0,
+            ih: 0,
+            oh: 0,
+            ou: 0,
+          };
     speechExpression && TweenMouthExpression(speechExpression);
 
     if (
@@ -457,27 +467,31 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
         speechExpressionStartedTimestamp -
         speechExpression.duration;
       speechExpressionStartedTimestamp = 0;
-      const nextIndexValue = speechExpressionIndex + 1;
+      const nextIndexValue = speechExpressionIndex.current + 1;
       let nextIndex =
-        nextIndexValue >= speechExpressions.length ? -1 : nextIndexValue;
+        nextIndexValue >= speechExpressions.current.length
+          ? -1
+          : nextIndexValue;
       if (nextIndex != -1) {
-        const nextExpression = speechExpressions[nextIndex];
+        const nextExpression = speechExpressions.current[nextIndex];
         const nextExpressionDuration = nextExpression.duration;
         if (nextExpressionDuration - timeDiff > 0) {
           // recalculate the duration difference of the next expression by
           // taking the time difference it took to determine that the next
           // expression should be started into account
-          speechExpressions[nextIndex].duration =
+          speechExpressions.current[nextIndex].duration =
             nextExpressionDuration - timeDiff;
         } else {
           // skip one expression should the time difference neccesitate it
           // and recalculate the time difference for the expression after
           // the skipped one
           const nextNextIndex =
-            nextIndex + 1 >= speechExpressions.length ? -1 : nextIndex + 1;
+            nextIndex + 1 >= speechExpressions.current.length
+              ? -1
+              : nextIndex + 1;
           if (nextNextIndex != -1) {
-            const nextNextExpression = speechExpressions[nextNextIndex];
-            speechExpressions[nextNextIndex].duration =
+            const nextNextExpression = speechExpressions.current[nextNextIndex];
+            speechExpressions.current[nextNextIndex].duration =
               nextNextExpression.duration - timeDiff;
             nextIndex = nextNextIndex;
           } else {
@@ -486,9 +500,9 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
       }
       if (nextIndex === -1) {
         setIsSilent(false);
-        setSpeechStartedTimestamp(0);
+        speechStartedTimestamp.current = 0;
       }
-      setSpeechExpressionIndex(nextIndex);
+      speechExpressionIndex.current = nextIndex;
     }
   }
 
