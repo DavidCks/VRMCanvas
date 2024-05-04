@@ -35,6 +35,7 @@ export interface ModelProps {
   modelPath: string;
   idleAnimationPath: string;
   ipaDictPaths?: Map<string, string>;
+  autoSpeak?: boolean;
   onAnimationLoaded?: (animate: (tf: boolean) => void) => void;
   onModelLoaded?: (
     speak: SpeakFunctionType,
@@ -358,7 +359,7 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
       if (speechExpressionIndex.current != -1) {
         expressSpeech(state);
       }
-      if (speechSynthesis && speechSynthesis.speaking) {
+      if (props.autoSpeak && speechSynthesis && speechSynthesis.speaking) {
         if (speechExpressionIndex.current == -1) {
           oscilateMouth(state, aa ?? 0.01);
         }
@@ -591,7 +592,7 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
             0,
             ((canvasProps ?? { positions: [0, 1, 0] }).positions ?? [
               0, 1, 0,
-            ])[1] - 0.5,
+            ])[1] - 0.3,
             0,
           ]}
           enableZoom={true}

@@ -12,6 +12,7 @@ export interface ModelProps {
     modelPath: string;
     idleAnimationPath: string;
     ipaDictPaths?: Map<string, string>;
+    autoSpeak?: boolean;
     onAnimationLoaded?: (animate: (tf: boolean) => void) => void;
     onModelLoaded?: (speak: SpeakFunctionType, express: ExpressFunctionType) => void;
     onLoadProgress?: (progress: number) => void;
