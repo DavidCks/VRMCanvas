@@ -25,6 +25,7 @@
     "@types/parse-color": "latest",
     "@types/react": "latest",
     "@types/three": "^0.154.0",
+    "dcks-debug": "../dcks-debug",
     "install": "latest",
     "react": "^18.0.0",
     "react-dom": "latest",

@@ -14,6 +14,7 @@ import {
   VRMMouthExpression,
 } from "../Text2Expression/lib";
 import { loadMixamoAnimation } from "./utils/loadMixamoAnimation.js";
+import { DCKSDebug } from "dcks-debug";
 
 export type SupportedSpeechMimingLanguage = "ipa" | "en";
 
@@ -25,7 +26,7 @@ export type ExpressFunctionType = (
 export type SpeakFunctionType = (
   word: string,
   lang?: SupportedSpeechMimingLanguage
-) => void;
+) => Promise<void>;
 /**
  * Model props
  *
@@ -100,27 +101,42 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
     setEmotions(expressions);
   };
 
-  const speak: SpeakFunctionType = (
+  const speak: SpeakFunctionType = async (
     word: string,
     lang: SupportedSpeechMimingLanguage = "en"
   ) => {
-    if (lang == "en") {
-      text2expression(
-        word,
-        lang,
-        (props.ipaDictPaths as Map<string, string>).get("en2ipa")
-      ).then((expressions: IPATextExpressions) => {
-        console.log(`Model: mouthing '${expressions.text}'`);
-        console.log(`Model: over '${expressions.duration}ms'`);
-        startSpeechExpressions(expressions);
-      });
-    } else {
-      text2expression(word, lang).then((expressions: IPATextExpressions) => {
-        console.log(`Model: mouthing '${expressions.text}'`);
-        console.log(`Model: over '${expressions.duration}ms'`);
-        startSpeechExpressions(expressions);
-      });
-    }
+    const promise: Promise<void> = new Promise((resolve, reject) => {
+      if (lang == "en") {
+        text2expression(
+          word,
+          lang,
+          (props.ipaDictPaths as Map<string, string>).get("en2ipa")
+        )
+          .then((expressions: IPATextExpressions) => {
+            console.log(`Model: mouthing '${expressions.text}'`);
+            console.log(`Model: over '${expressions.duration}ms'`);
+            setTimeout(() => {
+              resolve(); // Resolve the promise after the duration
+            }, expressions.duration);
+            startSpeechExpressions(expressions);
+          })
+          .catch((error) => {
+            reject(error); // Reject the promise if there is an error
+          });
+      } else {
+        text2expression(word, lang)
+          .then((expressions: IPATextExpressions) => {
+            console.log(`Model: mouthing '${expressions.text}'`);
+            console.log(`Model: over '${expressions.duration}ms'`);
+            startSpeechExpressions(expressions);
+            resolve(); // Resolve the promise immediately after starting expressions
+          })
+          .catch((error) => {
+            reject(error); // Reject the promise if there is an error
+          });
+      }
+    });
+    return promise;
   };
 
   function startSpeechExpressions(exps: IPATextExpressions) {
@@ -403,6 +419,7 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
         const expVal = vrm.expressionManager!.getValue(exp[0]);
         const tweenedVal = (expVal! + (exp[1] as number)) / 2;
         vrm.expressionManager!.setValue(exp[0], tweenedVal);
+        DCKSDebug("EXP", new Map([[exp[0], `${tweenedVal}`]]));
       }
     });
   }
@@ -414,8 +431,9 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
     if (speechStartedTimestamp.current === 0) {
       //if the speaking has just been started
       speechStartedTimestamp.current = state.clock.elapsedTime * 1000;
-      console.log(
-        `Model: Started speaking at '${speechStartedTimestamp.current}ms'`
+      DCKSDebug(
+        "EXP",
+        new Map([["start", `${speechStartedTimestamp.current}`]])
       );
     } else if (
       state.clock.elapsedTime * 1000 - speechStartedTimestamp.current >
@@ -425,7 +443,7 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
         return;
       }
       setIsSilent(true);
-      console.log(`Model: Spoke for '${speechDuration}ms'`);
+      DCKSDebug("EXP", new Map([["dur", `${speechDuration.current}ms`]]));
       //if the speaking has continued longer than predicted
       speechExpressionIndex.current = 0;
       speechStartedTimestamp.current = 0;
