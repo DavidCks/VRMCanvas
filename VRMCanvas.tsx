@@ -178,15 +178,19 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
     );
   };
 
-  const loadVRM = (modelPath: string) => {
+  const loadVRM = async (modelPath: string) => {
     if (!gltf) {
       const loader = new GLTFLoader();
       loader.register((parser) => {
         return new VRMLoaderPlugin(parser);
       });
-
+      const modelResponse = await fetch(modelPath);
+      // create blob from response
+      const modelBlob = await modelResponse.blob();
+      // create objectURL from blob
+      const modelObjectURL = URL.createObjectURL(modelBlob);
       loader.load(
-        modelPath,
+        modelObjectURL,
         (tmpGltf) => {
           setGltf(tmpGltf);
           loadFBX(props.idleAnimationPath, tmpGltf.userData.vrm);
