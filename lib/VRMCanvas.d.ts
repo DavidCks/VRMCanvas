@@ -2,7 +2,7 @@ import { FC } from "react";
 export type SupportedSpeechMimingLanguage = "ipa" | "en";
 export type Expressions = "angry" | "happy" | "neutral" | "relaxed" | "sad";
 export type ExpressFunctionType = (expressions: Map<Expressions, number>) => void;
-export type SpeakFunctionType = (word: string, lang?: SupportedSpeechMimingLanguage) => Promise<void>;
+export type SpeakFunctionType = (word: string, lang?: SupportedSpeechMimingLanguage, speed?: number) => Promise<void>;
 /**
  * Model props
  *

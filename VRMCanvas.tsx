@@ -25,7 +25,8 @@ export type ExpressFunctionType = (
 
 export type SpeakFunctionType = (
   word: string,
-  lang?: SupportedSpeechMimingLanguage
+  lang?: SupportedSpeechMimingLanguage,
+  speed?: number
 ) => Promise<void>;
 /**
  * Model props
@@ -103,8 +104,12 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
 
   const speak: SpeakFunctionType = async (
     word: string,
-    lang: SupportedSpeechMimingLanguage = "en"
+    lang: SupportedSpeechMimingLanguage = "en",
+    speed: number = 1
   ) => {
+    if (speed === undefined || speed == 0 || speed === null) {
+      speed = 1;
+    }
     const promise: Promise<void> = new Promise((resolve, reject) => {
       if (lang == "en") {
         text2expression(
@@ -113,12 +118,22 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
           (props.ipaDictPaths as Map<string, string>).get("en2ipa")
         )
           .then((expressions: IPATextExpressions) => {
-            console.log(`Model: mouthing '${expressions.text}'`);
-            console.log(`Model: over '${expressions.duration}ms'`);
+            const adjustedExpressions = {
+              text: expressions.text,
+              duration: expressions.duration * speed,
+              all: expressions.all.map((exp) => {
+                return {
+                  ...exp,
+                  duration: exp.duration * speed,
+                };
+              }),
+            };
+            console.log(`Model: mouthing '${adjustedExpressions.text}'`);
+            console.log(`Model: over '${adjustedExpressions.duration}ms'`);
             setTimeout(() => {
               resolve(); // Resolve the promise after the duration
-            }, expressions.duration);
-            startSpeechExpressions(expressions);
+            }, adjustedExpressions.duration);
+            startSpeechExpressions(adjustedExpressions);
           })
           .catch((error) => {
             reject(error); // Reject the promise if there is an error
@@ -126,10 +141,22 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
       } else {
         text2expression(word, lang)
           .then((expressions: IPATextExpressions) => {
-            console.log(`Model: mouthing '${expressions.text}'`);
-            console.log(`Model: over '${expressions.duration}ms'`);
-            startSpeechExpressions(expressions);
-            resolve(); // Resolve the promise immediately after starting expressions
+            const adjustedExpressions = {
+              text: expressions.text,
+              duration: expressions.duration * speed,
+              all: expressions.all.map((exp) => {
+                return {
+                  ...exp,
+                  duration: exp.duration * speed,
+                };
+              }),
+            };
+            console.log(`Model: mouthing '${adjustedExpressions.text}'`);
+            console.log(`Model: over '${adjustedExpressions.duration}ms'`);
+            startSpeechExpressions(adjustedExpressions);
+            setTimeout(() => {
+              resolve(); // Resolve the promise after the duration
+            }, adjustedExpressions.duration);
           })
           .catch((error) => {
             reject(error); // Reject the promise if there is an error
@@ -184,13 +211,13 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
       loader.register((parser) => {
         return new VRMLoaderPlugin(parser);
       });
-      const modelResponse = await fetch(modelPath);
-      // create blob from response
-      const modelBlob = await modelResponse.blob();
-      // create objectURL from blob
-      const modelObjectURL = URL.createObjectURL(modelBlob);
+      // const modelResponse = await fetch(modelPath);
+      // // create blob from response
+      // const modelBlob = await modelResponse.blob();
+      // // create objectURL from blob
+      // const modelObjectURL = URL.createObjectURL(modelBlob);
       loader.load(
-        modelObjectURL,
+        modelPath,
         (tmpGltf) => {
           setGltf(tmpGltf);
           loadFBX(props.idleAnimationPath, tmpGltf.userData.vrm);
