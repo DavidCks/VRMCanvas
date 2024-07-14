@@ -13,10 +13,17 @@ export interface ModelProps {
     idleAnimationPath: string;
     ipaDictPaths?: Map<string, string>;
     autoSpeak?: boolean;
+    showControls?: boolean;
     onAnimationLoaded?: (animate: (tf: boolean) => void) => void;
     onModelLoaded?: (speak: SpeakFunctionType, express: ExpressFunctionType) => void;
     onLoadProgress?: (progress: number) => void;
 }
+/**
+ * Vrmcanvas props
+ *
+ * @param backgroundColor Tuple of [r,g,b] where each value is between 0 and 1
+ * @param positions Tuple of [x,y,z] where each value is a number
+ */
 export interface VRMCanvasProps {
     backgroundColor?: [number, number, number];
     positions?: readonly [number, number, number];

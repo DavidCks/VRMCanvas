@@ -1,7 +1,7 @@
-import { VRM, VRMLoaderPlugin } from "@pixiv/three-vrm";
+import { VRM, VRMExpression, VRMLoaderPlugin } from "@pixiv/three-vrm";
 import { Html, OrbitControls } from "@react-three/drei";
 import { Canvas, invalidate, useFrame } from "@react-three/fiber";
-import assert from "assert";
+// import assert from "assert";
 import useWindowSize from "./hooks/useWindowSize";
 import React, { FC, Suspense, useEffect, useRef, useState } from "react";
 import { RootState } from "@react-three/fiber";
@@ -38,14 +38,22 @@ export interface ModelProps {
   idleAnimationPath: string;
   ipaDictPaths?: Map<string, string>;
   autoSpeak?: boolean;
+  showControls?: boolean;
   onAnimationLoaded?: (animate: (tf: boolean) => void) => void;
   onModelLoaded?: (
     speak: SpeakFunctionType,
     express: ExpressFunctionType
   ) => void;
+  onAllLoaded?: (vrm: VRM) => void;
   onLoadProgress?: (progress: number) => void;
 }
 
+/**
+ * Vrmcanvas props
+ *
+ * @param backgroundColor Tuple of [r,g,b] where each value is between 0 and 1
+ * @param positions Tuple of [x,y,z] where each value is a number
+ */
 export interface VRMCanvasProps {
   backgroundColor?: [number, number, number];
   positions?: readonly [number, number, number];
@@ -256,6 +264,10 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
         if (props.onModelLoaded) {
           props.onModelLoaded(speak, express);
         }
+        if (props.onAllLoaded) {
+          const vrm = gltf.userData.vrm as VRM;
+          props.onAllLoaded(vrm);
+        }
       }, 30);
     }
   }
@@ -286,10 +298,10 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
       setMixer(animationMixer);
       setCurrentAnimationAction(action);
     } else {
-      assert(
-        mixer,
-        "Error: The variable 'mixer' must be defined in the scope of this function if no new mixer is given as an argument"
-      );
+      // assert(
+      //   mixer,
+      //   "Error: The variable 'mixer' must be defined in the scope of this function if no new mixer is given as an argument"
+      // );
       const nextAnimationAction = mixer.clipAction(animationClip);
       const action = crossFade(
         currentAnimationAction as THREE.AnimationAction,
@@ -595,20 +607,140 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
 export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
   const gltfCanvasParentRef = useRef<HTMLDivElement>(null);
   const [canvasWidthAndHeight, setCanvasWidthAndHeight] = useState<number>(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const [vrm, setVrm] = useState<VRM>();
   const windowSize = useWindowSize();
+  const [expressionValueMap, setExpressionValueMap] = useState<
+    Map<string, number>
+  >(new Map());
+  const [isDraggingWindow, setIsDraggingWindow] = useState(false);
+  const [expressionWindowPosition, setExpressionWindowPosition] = useState<
+    [number, number]
+  >([0, 0]);
 
   useEffect(() => {
     if (gltfCanvasParentRef.current?.offsetWidth) {
       setCanvasWidthAndHeight(gltfCanvasParentRef.current.offsetWidth);
+      setExpressionWindowPosition([0, 0]);
     }
   }, [windowSize]);
+
+  useEffect(() => {
+    if (!modelProps?.showControls) {
+      setExpressionWindowPosition([0, 0]);
+    }
+  }, [modelProps?.showControls]);
+
+  useEffect(() => {
+    if (modelProps.showControls) {
+      // every 100ms, update the expressionValueMap
+      const interval = setInterval(() => {
+        if (vrm && vrm.expressionManager) {
+          const newExpMap: Map<string, number> = new Map();
+          Object.entries(vrm.expressionManager.expressionMap).map(
+            ([key, value]) => {
+              const expValue = expressionValueMap.get(key);
+              newExpMap.set(key, expValue);
+            }
+          );
+          setExpressionValueMap(new Map(newExpMap));
+        }
+      }, 45);
+      return () => clearInterval(interval);
+    }
+    return () => {};
+  }, [vrm, modelProps.showControls]);
+
+  const handleHover = (tf: boolean) => {
+    setIsHovered(tf);
+  };
+
+  const handleWindowDrag = (e: React.MouseEvent) => {
+    setExpressionWindowPosition((pos) => {
+      const newPos = [pos[0] + e.movementX, pos[1] + e.movementY];
+      return newPos as [number, number];
+    });
+  };
 
   return (
     <div
       ref={gltfCanvasParentRef}
-      style={{ height: `${canvasWidthAndHeight}px` }}
+      style={{ height: `${canvasWidthAndHeight}px`, position: "relative" }}
     >
+      <div
+        style={{
+          position: "absolute",
+          width: "100%",
+          height: "100%",
+          resize: "both",
+          left: `${expressionWindowPosition[0]}px`,
+          top: `${expressionWindowPosition[1]}px`,
+          maxHeight: "100%",
+          overflowY: "scroll",
+          display: modelProps.showControls ? "initial" : "none",
+          opacity: isHovered ? "1" : "0.1",
+          backgroundColor: "rgba(0,0,0,0.5)",
+        }}
+        onMouseEnter={() => handleHover(true)}
+        onMouseLeave={() => handleHover(false)}
+      >
+        {/* drag handle */}
+        <div
+          style={{
+            width: "100%",
+            height: "30px",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            cursor: "grab",
+            transition: "transform 0.1s",
+            transform: isDraggingWindow ? "scale(2)" : "scale(1)",
+          }}
+          onMouseDown={(e) => {
+            setIsDraggingWindow(true);
+          }}
+          onMouseUp={() => {
+            setIsDraggingWindow(false);
+          }}
+          onMouseLeave={() => {
+            setIsDraggingWindow(false);
+          }}
+          onMouseMove={(e) => {
+            if (isDraggingWindow) {
+              handleWindowDrag(e);
+            }
+          }}
+        >
+          {/* two horizontal lines svg */}
+          <svg
+            width="100%"
+            height="100%"
+            viewBox="0 0 100 100"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <line
+              x1="0"
+              y1="50"
+              x2="100"
+              y2="50"
+              stroke="white"
+              strokeWidth="2"
+            />
+          </svg>
+        </div>
+        {vrm?.expressionManager?.presetExpressionMap &&
+          buildExpressionMap(
+            Object.entries(vrm?.expressionManager?.presetExpressionMap),
+            "Preset Expressions"
+          )}
+        {vrm?.expressionManager?.customExpressionMap &&
+          buildExpressionMap(
+            Object.entries(vrm?.expressionManager?.customExpressionMap),
+            "Custom Expressions"
+          )}
+      </div>
       <Canvas
+        style={{
+          zIndex: modelProps.showControls ? -1 : 0,
+        }}
         gl={{ alpha: canvasProps?.backgroundColor ? false : true }}
         frameloop="demand"
         camera={{
@@ -633,6 +765,12 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
               modelProps?.onModelLoaded ??
               ((speakFn) => speakFn("Hello World!", "ipa"))
             }
+            onAllLoaded={(vrm) => {
+              setVrm(vrm);
+              if (modelProps?.onAllLoaded) {
+                modelProps.onAllLoaded(vrm);
+              }
+            }}
             onLoadProgress={modelProps.onLoadProgress}
           />
         </Suspense>
@@ -658,4 +796,55 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
       </Canvas>
     </div>
   );
+
+  function buildExpressionMap(
+    expressions: [string, VRMExpression][],
+    title: string
+  ): React.ReactNode {
+    return (
+      <div>
+        <p
+          style={{
+            color: "white",
+            margin: "0",
+            padding: "0",
+            textAlign: "center",
+            fontSize: "1.5em",
+          }}
+        >
+          {title}
+        </p>
+        <ul>
+          {expressions.map((exp) => (
+            <li style={{ display: "flex", flexDirection: "row" }} key={exp[0]}>
+              <div>{exp[0]}</div>
+              <div>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={vrm.expressionManager.getValue(exp[0])}
+                  onChange={(e) => {
+                    setExpressionValueMap(
+                      new Map(
+                        expressionValueMap.set(
+                          exp[0],
+                          parseFloat(e.target.value)
+                        )
+                      )
+                    );
+                    vrm.expressionManager.setValue(
+                      exp[0],
+                      parseFloat(e.target.value)
+                    );
+                  }}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 };
