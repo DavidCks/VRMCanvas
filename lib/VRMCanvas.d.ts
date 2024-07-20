@@ -1,3 +1,4 @@
+import { VRM } from "@pixiv/three-vrm";
 import { FC } from "react";
 export type SupportedSpeechMimingLanguage = "ipa" | "en";
 export type Expressions = "angry" | "happy" | "neutral" | "relaxed" | "sad";
@@ -11,11 +12,12 @@ export type SpeakFunctionType = (word: string, lang?: SupportedSpeechMimingLangu
 export interface ModelProps {
     modelPath: string;
     idleAnimationPath: string;
-    ipaDictPaths?: Map<string, string>;
+    ipaDictPaths?: Map<"en2ipa", string>;
     autoSpeak?: boolean;
     showControls?: boolean;
     onAnimationLoaded?: (animate: (tf: boolean) => void) => void;
     onModelLoaded?: (speak: SpeakFunctionType, express: ExpressFunctionType) => void;
+    onAllLoaded?: (vrm: VRM) => void;
     onLoadProgress?: (progress: number) => void;
 }
 /**
@@ -27,6 +29,7 @@ export interface ModelProps {
 export interface VRMCanvasProps {
     backgroundColor?: [number, number, number];
     positions?: readonly [number, number, number];
+    viewAngle?: number;
 }
 /**
  * Canvas props

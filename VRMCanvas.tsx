@@ -36,7 +36,7 @@ export type SpeakFunctionType = (
 export interface ModelProps {
   modelPath: string;
   idleAnimationPath: string;
-  ipaDictPaths?: Map<string, string>;
+  ipaDictPaths?: Map<"en2ipa", string>;
   autoSpeak?: boolean;
   showControls?: boolean;
   onAnimationLoaded?: (animate: (tf: boolean) => void) => void;
@@ -57,6 +57,7 @@ export interface ModelProps {
 export interface VRMCanvasProps {
   backgroundColor?: [number, number, number];
   positions?: readonly [number, number, number];
+  viewAngle?: number;
 }
 
 /**
@@ -264,7 +265,7 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
         if (props.onModelLoaded) {
           props.onModelLoaded(speak, express);
         }
-        if (props.onAllLoaded) {
+        if (props.onAllLoaded && gltf && gltf.userData && gltf.userData.vrm) {
           const vrm = gltf.userData.vrm as VRM;
           props.onAllLoaded(vrm);
         }
@@ -606,7 +607,8 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
 
 export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
   const gltfCanvasParentRef = useRef<HTMLDivElement>(null);
-  const [canvasWidthAndHeight, setCanvasWidthAndHeight] = useState<number>(0);
+  const [canvasHeight, setCanvasHeight] = useState<number>(0);
+  const [canvasLeftOffset, setCanvasLeftOffset] = useState<number | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [vrm, setVrm] = useState<VRM>();
   const windowSize = useWindowSize();
@@ -620,8 +622,13 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
 
   useEffect(() => {
     if (gltfCanvasParentRef.current?.offsetWidth) {
-      setCanvasWidthAndHeight(gltfCanvasParentRef.current.offsetWidth);
-      setExpressionWindowPosition([0, 0]);
+      const sizeDiff =
+        window.innerWidth - gltfCanvasParentRef.current.offsetWidth;
+      if (sizeDiff < 0) {
+        const leftOffset = sizeDiff / (Math.sqrt(Math.abs(sizeDiff)) / 2);
+        setCanvasLeftOffset(leftOffset);
+      }
+      setCanvasHeight(gltfCanvasParentRef.current.offsetWidth);
     }
   }, [windowSize]);
 
@@ -638,7 +645,8 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
         if (vrm && vrm.expressionManager) {
           const newExpMap: Map<string, number> = new Map();
           Object.entries(vrm.expressionManager.expressionMap).map(
-            ([key, value]) => {
+            /* eslint-disable-next-line */
+            ([key]) => {
               const expValue = expressionValueMap.get(key);
               newExpMap.set(key, expValue);
             }
@@ -665,7 +673,11 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
   return (
     <div
       ref={gltfCanvasParentRef}
-      style={{ height: `${canvasWidthAndHeight}px`, position: "relative" }}
+      style={{
+        height: `${canvasHeight}px`,
+        position: "relative",
+        left: canvasLeftOffset != null && `${canvasLeftOffset}px`,
+      }}
     >
       <div
         style={{
@@ -694,7 +706,7 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
             transition: "transform 0.1s",
             transform: isDraggingWindow ? "scale(2)" : "scale(1)",
           }}
-          onMouseDown={(e) => {
+          onMouseDown={() => {
             setIsDraggingWindow(true);
           }}
           onMouseUp={() => {
@@ -779,7 +791,7 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
             0,
             ((canvasProps ?? { positions: [0, 1, 0] }).positions ?? [
               0, 1, 0,
-            ])[1] - 0.3,
+            ])[1] - (canvasProps?.viewAngle ?? 0.3),
             0,
           ]}
           enableZoom={true}

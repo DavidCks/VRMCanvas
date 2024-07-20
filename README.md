@@ -1,15 +1,5 @@
 # vrmcanvas
 
-To install dependencies:
+## Important
 
-```bash
-bun install
-```
-
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.0.10. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+When setting the state for the speak and expression function after the VRM model is loaded, you must use `setState(() => fn)`, not setState(fn), because react executes any callback function passed to setState.
