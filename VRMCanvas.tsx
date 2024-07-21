@@ -770,11 +770,29 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
         />
         <pointLight
           position={[
-            0.1,
-            canvasProps?.positions ? canvasProps?.positions[1] : 0.9,
-            -0.6,
+            0.0,
+            canvasProps?.positions ? canvasProps?.positions[1] * 0.8 : 0.9,
+            canvasProps?.positions ? canvasProps?.positions[2] * 0.5 : -0.6,
           ]}
+          intensity={0.6}
+          color={new THREE.Color(0xffffff)}
+        />
+        <pointLight
+          position={[
+            0.0,
+            canvasProps?.positions ? canvasProps?.positions[1] * 0.5 : 0.9,
+            canvasProps?.positions ? canvasProps?.positions[2] * 0.5 : -0.6,
+          ]}
+          intensity={0.8}
+          color={new THREE.Color(0xffffff)}
+        />
+        <directionalLight
           intensity={1}
+          position={[
+            0.1,
+            canvasProps?.positions ? canvasProps?.positions[1] * 0.8 : 0.9,
+            canvasProps?.positions ? canvasProps?.positions[2] * 0.7 : -0.6,
+          ]}
           color={new THREE.Color(0xffffff)}
         />
         <directionalLight
