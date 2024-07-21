@@ -12,7 +12,7 @@ import {
   IPATextExpressions,
   emptyVRMMouthExpression,
   VRMMouthExpression,
-} from "../Text2Expression/lib";
+} from "text2expression/lib";
 import { loadMixamoAnimation } from "./utils/loadMixamoAnimation.js";
 import { DCKSDebug } from "dcks-debug";
 
@@ -763,8 +763,29 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
         }}
         flat
       >
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[1, 1, -1]} color={new THREE.Color()} />
+        <ambientLight
+          position={[0.1, 0.5, 0.5]}
+          intensity={0.7}
+          color={new THREE.Color(0xffffff)}
+        />
+        <pointLight
+          position={[
+            0.1,
+            canvasProps?.positions ? canvasProps?.positions[1] : 0.9,
+            -0.6,
+          ]}
+          intensity={1}
+          color={new THREE.Color(0xffffff)}
+        />
+        <directionalLight
+          intensity={1}
+          position={[
+            0.1,
+            canvasProps?.positions ? canvasProps?.positions[1] : 0.9,
+            -0.6,
+          ]}
+          color={new THREE.Color(0xffffff)}
+        />
         <Suspense fallback={null}>
           <Model
             ipaDictPaths={modelProps.ipaDictPaths}
