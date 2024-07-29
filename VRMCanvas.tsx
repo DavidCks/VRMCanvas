@@ -23,6 +23,11 @@ export type ExpressFunctionType = (
   expressions: Map<Expressions, number>
 ) => void;
 
+export enum LookAtPositions {
+  POINTER = 0,
+  CAMERA = 1,
+}
+
 export type SpeakFunctionType = (
   word: string,
   lang?: SupportedSpeechMimingLanguage,
@@ -35,6 +40,7 @@ export type SpeakFunctionType = (
  */
 export interface ModelProps {
   modelPath: string;
+  lookAt: LookAtPositions;
   idleAnimationPath: string;
   ipaDictPaths?: Map<"en2ipa", string>;
   autoSpeak?: boolean;
@@ -46,6 +52,10 @@ export interface ModelProps {
   ) => void;
   onAllLoaded?: (vrm: VRM) => void;
   onLoadProgress?: (progress: number) => void;
+}
+
+interface ModelPropsInternal extends ModelProps {
+  positions: readonly [number, number, number];
 }
 
 /**
@@ -76,7 +86,7 @@ export interface CanvasProps {
  *
  * @param props The Path to the VRM model to render
  */
-const Model: FC<ModelProps> = (props: ModelProps) => {
+const Model: FC<ModelPropsInternal> = (props: ModelPropsInternal) => {
   const [gltf, setGltf] = useState<GLTF>();
   const [modelProgress, setModelProgress] = useState<number>(0);
   const [animationProgress, setAnimationProgress] = useState<number>(0);
@@ -432,7 +442,24 @@ const Model: FC<ModelProps> = (props: ModelProps) => {
           ou: ou ?? 0.01,
         });
       }
-
+      if (props.lookAt === LookAtPositions.POINTER) {
+        const pointerPosition = state.pointer;
+        vrm.lookAt.lookAt(
+          new THREE.Vector3(
+            pointerPosition[0],
+            pointerPosition[1],
+            props.positions[2]
+          )
+        );
+      } else {
+        vrm.lookAt.lookAt(
+          new THREE.Vector3(
+            props.positions[0],
+            props.positions[1],
+            props.positions[2]
+          )
+        );
+      }
       if (animationState) {
         invalidate();
         mixer.update(delta);
@@ -619,6 +646,7 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
   const [expressionWindowPosition, setExpressionWindowPosition] = useState<
     [number, number]
   >([0, 0]);
+  const [modelProgress, setModelProgress] = useState(0);
 
   useEffect(() => {
     if (gltfCanvasParentRef.current?.offsetWidth) {
@@ -738,6 +766,19 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
             />
           </svg>
         </div>
+        {/* progress */}
+        <div
+          style={{
+            position: "absolute",
+            margin: "auto",
+            left: "0",
+            right: "0",
+            top: "0",
+            bottom: "0",
+          }}
+        >
+          {modelProgress}
+        </div>
         {vrm?.expressionManager?.presetExpressionMap &&
           buildExpressionMap(
             Object.entries(vrm?.expressionManager?.presetExpressionMap),
@@ -770,20 +811,29 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
         />
         <pointLight
           position={[
-            0.0,
-            canvasProps?.positions ? canvasProps?.positions[1] * 0.8 : 0.9,
-            canvasProps?.positions ? canvasProps?.positions[2] * 0.5 : -0.6,
+            0.2,
+            canvasProps?.positions ? canvasProps?.positions[1] * 0.8 : 0.8,
+            canvasProps?.positions ? canvasProps?.positions[2] * 0.7 : -0.7,
           ]}
-          intensity={0.6}
+          intensity={0.4}
+          color={new THREE.Color(0xffffff)}
+        />
+        <pointLight
+          position={[
+            0.2,
+            canvasProps?.positions ? canvasProps?.positions[1] * -0.8 : -0.8,
+            canvasProps?.positions ? canvasProps?.positions[2] * -0.7 : 0.7,
+          ]}
+          intensity={0.4}
           color={new THREE.Color(0xffffff)}
         />
         <pointLight
           position={[
             0.0,
-            canvasProps?.positions ? canvasProps?.positions[1] * 0.5 : 0.9,
-            canvasProps?.positions ? canvasProps?.positions[2] * 0.5 : -0.6,
+            canvasProps?.positions ? canvasProps?.positions[1] * 0.3 : 0.3,
+            canvasProps?.positions ? canvasProps?.positions[2] * 0.7 : -0.7,
           ]}
-          intensity={0.8}
+          intensity={0.3}
           color={new THREE.Color(0xffffff)}
         />
         <directionalLight
@@ -807,6 +857,8 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
         <Suspense fallback={null}>
           <Model
             ipaDictPaths={modelProps.ipaDictPaths}
+            lookAt={modelProps.lookAt}
+            positions={canvasProps?.positions ?? [0.1, 0.5, 0.5]}
             modelPath={modelProps.modelPath}
             idleAnimationPath={modelProps.idleAnimationPath}
             onAnimationLoaded={
@@ -822,7 +874,11 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
                 modelProps.onAllLoaded(vrm);
               }
             }}
-            onLoadProgress={modelProps.onLoadProgress}
+            onLoadProgress={(progress) => {
+              setModelProgress(progress);
+              if (modelProps?.onLoadProgress)
+                modelProps.onLoadProgress(progress);
+            }}
           />
         </Suspense>
         <OrbitControls

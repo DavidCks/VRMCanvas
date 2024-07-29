@@ -8,4 +8,5 @@ export type {
   SpeakFunctionType,
   ExpressFunctionType,
   SupportedSpeechMimingLanguage,
+  LookAtPositions,
 } from "./VRMCanvas";

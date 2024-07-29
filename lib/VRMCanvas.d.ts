@@ -3,6 +3,10 @@ import { FC } from "react";
 export type SupportedSpeechMimingLanguage = "ipa" | "en";
 export type Expressions = "angry" | "happy" | "neutral" | "relaxed" | "sad";
 export type ExpressFunctionType = (expressions: Map<Expressions, number>) => void;
+export declare enum LookAtPositions {
+    POINTER = 0,
+    CAMERA = 1
+}
 export type SpeakFunctionType = (word: string, lang?: SupportedSpeechMimingLanguage, speed?: number) => Promise<void>;
 /**
  * Model props
@@ -11,6 +15,7 @@ export type SpeakFunctionType = (word: string, lang?: SupportedSpeechMimingLangu
  */
 export interface ModelProps {
     modelPath: string;
+    lookAt: LookAtPositions;
     idleAnimationPath: string;
     ipaDictPaths?: Map<"en2ipa", string>;
     autoSpeak?: boolean;
