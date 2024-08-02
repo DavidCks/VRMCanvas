@@ -646,7 +646,7 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
   const [expressionWindowPosition, setExpressionWindowPosition] = useState<
     [number, number]
   >([0, 0]);
-  const [modelProgress, setModelProgress] = useState(0);
+  const modelProgress = useRef(0);
 
   useEffect(() => {
     if (gltfCanvasParentRef.current?.offsetWidth) {
@@ -766,19 +766,6 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
             />
           </svg>
         </div>
-        {/* progress */}
-        <div
-          style={{
-            position: "absolute",
-            margin: "auto",
-            left: "0",
-            right: "0",
-            top: "0",
-            bottom: "0",
-          }}
-        >
-          {modelProgress}
-        </div>
         {vrm?.expressionManager?.presetExpressionMap &&
           buildExpressionMap(
             Object.entries(vrm?.expressionManager?.presetExpressionMap),
@@ -793,6 +780,8 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
       <Canvas
         style={{
           zIndex: modelProps.showControls ? -1 : 0,
+          opacity: modelProgress.current > 99 ? "1" : "0",
+          transition: "opacity 0.3s ease-in",
         }}
         gl={{ alpha: canvasProps?.backgroundColor ? false : true }}
         frameloop="demand"
@@ -875,7 +864,7 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
               }
             }}
             onLoadProgress={(progress) => {
-              setModelProgress(progress);
+              modelProgress.current = progress;
               if (modelProps?.onLoadProgress)
                 modelProps.onLoadProgress(progress);
             }}
@@ -901,6 +890,54 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
         )}
         {/* <gridHelper /> */}
       </Canvas>
+      {/* progress */}
+      <div
+        style={{
+          position: "absolute",
+          margin: "auto",
+          left: "0",
+          right: "0",
+          top: "0",
+          bottom: "0",
+          width: "fit-content",
+          height: "fit-content",
+          opacity: modelProgress.current < 99 ? "0.5" : "0",
+          boxShadow: "0px 0px 80px black",
+          backgroundColor: "rgba(0,0,0,0.5)",
+          borderRadius: "40px",
+          transition: "opacity 0.3s ease-out",
+          pointerEvents: "none",
+        }}
+      >
+        {/* svg spiler */}
+        <svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 100 100"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* loading... text */}
+          <text
+            x="50"
+            y="50"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="white"
+            fontSize="0.8rem"
+          >
+            Loading
+          </text>
+          <circle
+            cx="50"
+            cy="50"
+            r="40"
+            stroke="white"
+            strokeWidth="2"
+            stroke-dasharray="8"
+            fill="none"
+          />
+        </svg>
+      </div>
     </div>
   );
 
