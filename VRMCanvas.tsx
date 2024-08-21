@@ -933,7 +933,7 @@ export const VRMCanvas: FC<CanvasProps> = ({ modelProps, canvasProps }) => {
             r="40"
             stroke="white"
             strokeWidth="2"
-            stroke-dasharray="8"
+            strokeDasharray="8"
             fill="none"
           />
         </svg>
